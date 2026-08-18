@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Year 6 KSSR English Learning Module</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+    .quiz-container { max-width: 650px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    h2, h3 { color: #2c3e50; }
+    .badge { display: inline-block; padding: 5px 10px; background-color: #3498db; color: white; border-radius: 5px; font-weight: bold; margin-bottom: 15px; }
+    .option-btn { display: block; width: 100%; padding: 12px; margin: 8px 0; background-color: #ecf0f1; border: 1px solid #bdc3c7; border-radius: 6px; text-align: left; font-size: 16px; cursor: pointer; transition: 0.2s; }
+    .option-btn:hover { background-color: #d5dbdb; }
+    .note-box { margin-top: 15px; padding: 15px; border-radius: 6px; display: none; }
+    .correct-note { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .wrong-note { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .next-btn, .start-btn { margin-top: 15px; padding: 10px 20px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+    .input-field { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
+  </style>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+<div class="quiz-container">
+  <!-- Skrin Mula: Masukkan Nama -->
+  <div id="login-screen">
+    <h2>Welcome to Year 6 English Quiz</h2>
+    <p>Please enter your name to start:</p>
+    <input type="text" id="student-name" class="input-field" placeholder="Nama Penuh Pelajar">
+    <button class="start-btn" onclick="startQuiz()">Start Quiz</button>
+  </div>
+
+  <!-- Skrin Kuiz -->
+  <div id="quiz-screen" style="display:none;">
+    <div id="quiz-header">
+      <span class="badge" id="level-badge">Level: Easy</span>
+      <h3 id="question-text">Question goes here</h3>
+    </div>
+
+    <div id="options-container"></div>
+    <div id="note-box" class="note-box"></div>
+    <button id="next-btn" class="next-btn" style="display:none;" onclick="nextQuestion()">Next Question</button>
+    <div id="result-screen" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+// === GANTIKAN DENGAN KONFIGURASI FIREBASE CIKGU ===
+const firebaseConfig = {
+  apiKey: "API_KEY_ANDA",
+  authDomain: "PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "PROJECT_ID",
+  storageBucket: "PROJECT_ID.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const database = firebase.database();
+
+let studentName = "";
+let studentId = "";
+let currentLevel = "easy";
+let currentQuestionIndex = 0;
+let score = 0;
+let totalScore = 0;
+let answered = false;
+
+const quizData = {
+  easy: [
+    { q: "1. Complete the sentence: 'Harry Potter _______ with his uncle and aunt.'", options: ["live", "lives", "living", "lived"], answer: 1, note: "<b>Grammar Note:</b> 'Harry Potter' is a Singular Subject (He). In Simple Present Tense, we add '-s' to the verb (lives)." },
+    { q: "2. Choose the correct noun: 'Matilda is a Maths _______ because she is very clever with numbers.'", options: ["wizard", "monster", "dinosaur", "alien"], answer: 0, note: "<b>Vocabulary Note:</b> A 'wizard' in this context means someone extraordinarily clever or skilled at something." },
+    { q: "3. Complete the sentence: 'The children _______ to sleep when the Knight sang.'", options: ["go", "went", "going", "gone"], answer: 1, note: "<b>Grammar Note:</b> The story is written in the Simple Past Tense. The past tense of 'go' is 'went'." },
+    { q: "4. Identify the homophone: 'Peace' sounds the same as _______.", options: ["piece", "pace", "place", "praise"], answer: 0, note: "<b>Language Note:</b> Homophones are words that have the same pronunciation but different spellings and meanings ('Peace' / 'Piece')." },
+    { q: "5. Choose the correct plural noun: 'There were many different types of _______ at the fair.'", options: ["book", "books", "bookes", "booking"], answer: 1, note: "<b>Grammar Note:</b> The word 'many' indicates a plural countable noun, so we add '-s' to 'book' -> 'books'." },
+    { q: "6. Complete the sentence: 'Matilda _______ a lot of books every week.'", options: ["read", "reads", "reading", "is read"], answer: 1, note: "<b>Grammar Note:</b> 'Matilda' is a singular subject. For habitual actions in Simple Present Tense, use 'reads'." },
+    { q: "7. Choose the correct spelling: 'The mother was _______ when the Knight arrived late.'", options: ["angry", "angrie", "angree", "angri"], answer: 0, note: "<b>Spelling Note:</b> The correct spelling for the adjective describing feeling mad or annoyed is 'angry'." },
+    { q: "8. Complete the sentence: 'A _______ is a short description of a book.'", options: ["blurb", "blog", "chart", "map"], answer: 0, note: "<b>Vocabulary Note:</b> A 'blurb' is a short description of a book printed on the back cover." },
+    { q: "9. Identify the homophone: 'Night' sounds the same as _______.", options: ["knight", "neat", "net", "knot"], answer: 0, note: "<b>Language Note:</b> 'Night' (waktu malam) and 'knight' (satria) are homophones." },
+    { q: "10. Complete the sentence: 'Jack used _______ beans to grow a gigantic stalk.'", options: ["magic", "magical", "magician", "magically"], answer: 0, note: "<b>Vocabulary Note:</b> 'Magic' acts as a modifier/adjective here for the noun 'beans'." }
+  ],
+  medium: [
+    { q: "1. Complete using Past Continuous Tense: 'Harry _______ when the messenger arrived.'", options: ["is reading", "was reading", "were reading", "read"], answer: 1, note: "<b>Grammar Note:</b> For Past Continuous Tense with a singular subject ('Harry'), use 'was' + Verb-ing." },
+    { q: "2. Choose the correct option: 'Kamini went to the fair _______ buy ten books.'", options: ["so", "because", "to", "but"], answer: 2, note: "<b>Grammar Note:</b> We use 'to' + base verb to state a purpose or intention." },
+    { q: "3. Complete the sentence: 'Miss Trunchbull is _______ ferocious than other teachers.'", options: ["more", "most", "as", "much"], answer: 0, note: "<b>Grammar Note:</b> Comparative adjective for long words (ferocious) uses 'more ... than'." },
+    { q: "4. Identify the correct punctuation: '_______ book would you choose to read?'", options: ["Which", "which", "WHICH", "Which"], answer: 0, note: "<b>Punctuation Note:</b> Questions must begin with a capital letter ('Which')." },
+    { q: "5. Complete with Subject-Verb Agreement: 'Neither Harry nor his friends _______ happy at home.'", options: ["was", "were", "is", "be"], answer: 1, note: "<b>Grammar Note:</b> In 'neither... nor', the verb agrees with the subject closer to it ('his friends' = plural -> 'were')." },
+    { q: "6. Choose the correct conjunction: 'Matilda is young, _______ she is extremely smart.'", options: ["and", "or", "but", "so"], answer: 2, note: "<b>Grammar Note:</b> 'But' is used to show contrast between being young and being very smart." },
+    { q: "7. Complete using Simple Past Tense: 'The mother _______ to meet the Knight of the Night.'", options: ["go", "goes", "went", "gone"], answer: 2, note: "<b>Grammar Note:</b> The irregular past tense form of 'go' is 'went'." },
+    { q: "8. Select the correct homophone: 'Please _______ your answer on the paper.'", options: ["write", "right", "rite", "wright"], answer: 0, note: "<b>Vocabulary Note:</b> 'Write' means to mark letters on paper, whereas 'right' means correct/direction." },
+    { q: "9. Complete the sentence: 'The sun was shining _______ than yesterday.'", options: ["bright", "brighter", "brightest", "more bright"], answer: 1, note: "<b>Grammar Note:</b> Use the comparative form '-er' ('brighter') when comparing two things." },
+    { q: "10. Choose the correct possessive pronoun: 'The decision to buy the book was _______.'", options: ["her", "hers", "she", "herself"], answer: 1, note: "<b>Grammar Note:</b> 'Hers' is a possessive pronoun used without a following noun." }
+  ],
+  hard: [
+    { q: "1. Select the correct First Conditional structure: 'If Harry _______ the invitation, he _______ a new world.'", options: ["accepts / will discover", "accepted / discovered", "accept / discover", "will accept / accepts"], answer: 0, note: "<b>Grammar Note:</b> First Conditional rule: If + Simple Present ('accepts'), Future tense with 'will' + base verb ('will discover')." },
+    { q: "2. Identify the correct Passive Voice: 'The stars _______ by the Knight of the Night.'", options: ["were polished", "was polished", "are polish", "is polishing"], answer: 0, note: "<b>Grammar Note:</b> Passive voice in simple past for plural subject ('The stars') uses 'were' + Past Participle ('polished')." },
+    { q: "3. Choose the sentence with correct punctuation:", options: ["\"I have to wake the moon up,\" said the Knight.", "i have to wake the moon up said the knight.", "\"I have to wake the moon up\" said the Knight", "I have to wake the moon up, said the knight."], answer: 0, note: "<b>Punctuation Note:</b> Direct speech requires quotation marks, proper capitalization, and a comma inside the quotes." },
+    { q: "4. Complete using Past Continuous & Simple Past: 'While the Knight _______ the stars, the mothers _______ below.'", options: ["was polishing / were waiting", "polished / waited", "is polishing / wait", "were polishing / was waiting"], answer: 0, note: "<b>Grammar Note:</b> Two continuous actions happening at the same time in the past both use Past Continuous Tense." },
+    { q: "5. Choose the correct Modal Verb for deduction: 'Matilda solved the complex math problem easily; she _______ a genius.'", options: ["must be", "might not be", "should be", "cannot be"], answer: 0, note: "<b>Grammar Note:</b> Use 'must be' when making a logical deduction based on strong evidence." },
+    { q: "6. Select the correct Relative Pronoun: 'Miss Trunchbull is the headmistress _______ rules Cruncher Hall with an iron fist.'", options: ["who", "which", "where", "whose"], answer: 0, note: "<b>Grammar Note:</b> Use 'who' as a relative pronoun when referring to people ('headmistress')." },
+    { q: "7. Choose the correct Reported Speech: 'The Knight said, \"I am very busy tonight.\"'", options: ["The Knight said that he was very busy that night.", "The Knight said that I am very busy tonight.", "The Knight says that he is very busy tonight.", "The Knight told that he is very busy that night."], answer: 0, note: "<b>Grammar Note:</b> In Reported Speech, present tense ('am') changes to past tense ('was'), and 'tonight' changes to 'that night'." },
+    { q: "8. Complete the sentence: 'Neither the students nor the teacher _______ aware of the change in schedule.'", options: ["was", "were", "are", "be"], answer: 0, note: "<b>Grammar Note:</b> In 'neither... nor', the verb agrees with the subject closest to it ('the teacher' = singular -> 'was')." },
+    { q: "9. Identify the synonym for 'ferocious' in the context of the story:", options: ["fierce and aggressive", "gentle and kind", "quiet and shy", "lazy and calm"], answer: 0, note: "<b>Vocabulary Note:</b> 'Ferocious' means wild, fierce, violent, or aggressive." },
+    { q: "10. Choose the correct Question Tag: 'Harry Potter lives with the Dursleys, _______?'", options: ["doesn't he?", "don't he?", "isn't he?", "didn't he?"], answer: 0, note: "<b>Grammar Note:</b> A positive statement in Simple Present Tense takes a negative question tag using 'doesn't' for singular subjects." }
+  ]
+};
+
+function startQuiz() {
+  const nameInput = document.getElementById("student-name").value.trim();
+  if (!nameInput) {
+    alert("Sila masukkan nama anda!");
+    return;
+  }
+  studentName = nameInput;
+  studentId = "student_" + Date.now();
+  
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("quiz-screen").style.display = "block";
+  
+  updateScoreInFirebase();
+  loadQuestion();
+}
+
+function updateScoreInFirebase() {
+  database.ref('leaderboard/' + studentId).set({
+    name: studentName,
+    score: totalScore,
+    level: currentLevel,
+    lastUpdate: new Date().toLocaleTimeString()
+  });
+}
+
+function loadQuestion() {
+  answered = false;
+  const qData = quizData[currentLevel][currentQuestionIndex];
+  
+  document.getElementById("level-badge").innerText = "Level: " + currentLevel.toUpperCase() + " (" + (currentQuestionIndex + 1) + "/10)";
+  document.getElementById("question-text").innerText = qData.q;
+  
+  const optionsContainer = document.getElementById("options-container");
+  optionsContainer.innerHTML = "";
+  
+  document.getElementById("note-box").style.display = "none";
+  document.getElementById("next-btn").style.display = "none";
+
+  qData.options.forEach((opt, index) => {
+    const btn = document.createElement("button");
+    btn.className = "option-btn";
+    btn.innerText = opt;
+    btn.onclick = () => checkAnswer(index);
+    optionsContainer.appendChild(btn);
+  });
+}
+
+function checkAnswer(selectedIndex) {
+  if (answered) return;
+  answered = true;
+  
+  const qData = quizData[currentLevel][currentQuestionIndex];
+  const noteBox = document.getElementById("note-box");
+  const options = document.querySelectorAll(".option-btn");
+  
+  options.forEach(btn => btn.disabled = true);
+
+  if (selectedIndex === qData.answer) {
+    score++;
+    totalScore += 10;
+    options[selectedIndex].style.backgroundColor = "#2ecc71";
+    options[selectedIndex].style.color = "white";
+    noteBox.className = "note-box correct-note";
+    noteBox.innerHTML = "<strong>Correct! 🎉</strong><br>" + qData.note;
+  } else {
+    options[selectedIndex].style.backgroundColor = "#e74c3c";
+    options[selectedIndex].style.color = "white";
+    options[qData.answer].style.backgroundColor = "#2ecc71";
+    options[qData.answer].style.color = "white";
+    noteBox.className = "note-box wrong-note";
+    noteBox.innerHTML = "<strong>Incorrect! ❌</strong><br>" + qData.note;
+  }
+  
+  updateScoreInFirebase();
+  noteBox.style.display = "block";
+  document.getElementById("next-btn").style.display = "inline-block";
+}
+
+function nextQuestion() {
+  currentQuestionIndex++;
+  if (currentQuestionIndex < 10) {
+    loadQuestion();
+  } else {
+    showLevelResult();
+  }
+}
+
+function showLevelResult() {
+  document.getElementById("quiz-header").style.display = "none";
+  document.getElementById("options-container").style.display = "none";
+  document.getElementById("note-box").style.display = "none";
+  document.getElementById("next-btn").style.display = "none";
+  
+  const resultScreen = document.getElementById("result-screen");
+  resultScreen.style.display = "block";
+  
+  let resultHTML = `<h2>Level Complete!</h2>`;
+  resultHTML += `<p>Level Score: <strong>${score} / 10</strong></p>`;
+  resultHTML += `<p>Total Points: <strong>${totalScore}</strong></p>`;
+  
+  if (score >= 8) {
+    resultHTML += `<p style="color: green; font-weight: bold;">Great job! You passed this stage.</p>`;
+    if (currentLevel === "easy") {
+      resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="startNextLevel('medium')">Advance to Medium Level</button>`;
+    } else if (currentLevel === "medium") {
+      resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="startNextLevel('hard')">Advance to Hard Level</button>`;
+    } else {
+      resultHTML += `<h3>Congratulations! You have successfully mastered all levels! 🎉</h3>`;
+    }
+  } else {
+    resultHTML += `<p style="color: red; font-weight: bold;">You need at least 8/10 to unlock the next level. Please try again!</p>`;
+    resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="repeatLevel()">Retry Level</button>`;
+  }
+  
+  resultScreen.innerHTML = resultHTML;
+}
+
+function startNextLevel(nextLvl) {
+  currentLevel = nextLvl;
+  currentQuestionIndex = 0;
+  score = 0;
+  resetUI();
+  loadQuestion();
+}
+
+function repeatLevel() {
+  currentQuestionIndex = 0;
+  score = 0;
+  resetUI();
+  loadQuestion();
+}
+
+function resetUI() {
+  document.getElementById("quiz-header").style.display = "block";
+  document.getElementById("options-container").style.display = "block";
+  document.getElementById("result-screen").style.display = "none";
+}
+</script>
+
+</body>
+</html>

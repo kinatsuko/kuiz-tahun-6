@@ -245,6 +245,88 @@ function resetUI() {
   document.getElementById("options-container").style.display = "block";
   document.getElementById("result-screen").style.display = "none";
 }
+  // SIMPAN MARKAH TERTINGGI BAGI SETIAP TAHAP
+let levelScores = {
+  easy: 0,
+  medium: 0,
+  hard: 0
+};
+
+function startQuiz() {
+  const nameInput = document.getElementById("student-name").value.trim();
+  if (!nameInput) {
+    alert("Sila masukkan nama anda!");
+    return;
+  }
+  studentName = nameInput;
+  studentId = "student_" + Date.now();
+  
+  // Reset markah apabila mula kuiz baharu
+  levelScores = { easy: 0, medium: 0, hard: 0 };
+  totalScore = 0;
+  
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("quiz-screen").style.display = "block";
+  
+  updateScoreInFirebase();
+  loadQuestion();
+}
+
+function checkAnswer(selectedIndex) {
+  if (answered) return;
+  answered = true;
+  
+  const qData = quizData[currentLevel][currentQuestionIndex];
+  const noteBox = document.getElementById("note-box");
+  const options = document.querySelectorAll(".option-btn");
+  
+  options.forEach(btn => btn.disabled = true);
+
+  if (selectedIndex === qData.answer) {
+    score++; // Markah percubaan semasa (0-10)
+    options[selectedIndex].style.backgroundColor = "#2ecc71";
+    options[selectedIndex].style.color = "white";
+    noteBox.className = "note-box correct-note";
+    noteBox.innerHTML = "<strong>Correct! 🎉</strong><br>" + qData.note;
+  } else {
+    options[selectedIndex].style.backgroundColor = "#e74c3c";
+    options[selectedIndex].style.color = "white";
+    options[qData.answer].style.backgroundColor = "#2ecc71";
+    options[qData.answer].style.color = "white";
+    noteBox.className = "note-box wrong-note";
+    noteBox.innerHTML = "<strong>Incorrect! ❌</strong><br>" + qData.note;
+  }
+  
+  // Kemas kini markah tahap semasa (1 soalan betul = 10 mata)
+  levelScores[currentLevel] = score * 10;
+  
+  // Hitung jumlah markah terkumpul dari semua tahap yang telah dilalui
+  totalScore = levelScores.easy + levelScores.medium + levelScores.hard;
+  
+  updateScoreInFirebase();
+  noteBox.style.display = "block";
+  document.getElementById("next-btn").style.display = "inline-block";
+}
+
+function repeatLevel() {
+  // Apabila retry level, reset markah tahap ini semula ke 0
+  score = 0;
+  levelScores[currentLevel] = 0;
+  totalScore = levelScores.easy + levelScores.medium + levelScores.hard;
+  
+  currentQuestionIndex = 0;
+  resetUI();
+  updateScoreInFirebase();
+  loadQuestion();
+}
+
+function startNextLevel(nextLvl) {
+  currentLevel = nextLvl;
+  currentQuestionIndex = 0;
+  score = 0;
+  resetUI();
+  loadQuestion();
+}
 </script>
 
 </body>

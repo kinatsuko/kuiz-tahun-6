@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code - Kuiz Bahasa Inggeris Tahun 6</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f7f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+    h2 {
+      color: #2c3e50;
+      margin-bottom: 5px;
+    }
+    p {
+      color: #7f8c8d;
+      font-size: 14px;
+    }
+    .qr-img {
+      width: 250px;
+      height: 250px;
+      margin: 20px 0;
+      border: 4px solid #3498db;
+      border-radius: 8px;
+      padding: 5px;
+    }
+    .url-box {
+      background-color: #ecf0f1;
+      padding: 10px;
+      border-radius: 6px;
+      word-break: break-all;
+      font-weight: bold;
+      color: #2c3e50;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Imbas untuk Mula Kuiz!</h2>
+  <p>Year 6 KSSR English Learning Module</p>
+
+  <!-- QR Code digenerate secara automatik mengambil pautan kuiz utama -->
+  <img id="qr-code" class="qr-img" src="" alt="QR Code Kuiz">
+
+  <div class="url-box" id="quiz-url">Memuatkan pautan...</div>
+</div>
+
+<script>
+  // Dapatkan URL penuh untuk kuiz (index.html)
+  const quizUrl = window.location.href.replace('qr.html', '');
+  
+  // Masukkan URL ke dalam paparan teks
+  document.getElementById('quiz-url').innerText = quizUrl;
+
+  // Hasilkan Kod QR menggunakan API Google Chart
+  const qrApi = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(quizUrl)}`;
+  document.getElementById('qr-code').src = qrApi;
+</script>
+
+</body>
+</html>

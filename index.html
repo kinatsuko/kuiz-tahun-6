@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ms">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Year 6 KSSR English Learning Module</title>
+  <title>Portal Kuiz Tahun 6 - KSSR</title>
   <style>
     body { font-family: Arial, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
     .quiz-container { max-width: 650px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
@@ -11,47 +11,53 @@
     .badge { display: inline-block; padding: 5px 10px; background-color: #3498db; color: white; border-radius: 5px; font-weight: bold; margin-bottom: 15px; }
     .option-btn { display: block; width: 100%; padding: 12px; margin: 8px 0; background-color: #ecf0f1; border: 1px solid #bdc3c7; border-radius: 6px; text-align: left; font-size: 16px; cursor: pointer; transition: 0.2s; }
     .option-btn:hover { background-color: #d5dbdb; }
+    .subject-btn { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; transition: 0.2s; }
+    .btn-bi { background-color: #3498db; }
+    .btn-bm { background-color: #e67e22; }
+    .subject-btn:hover { opacity: 0.9; }
     .note-box { margin-top: 15px; padding: 15px; border-radius: 6px; display: none; }
     .correct-note { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     .wrong-note { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
     .next-btn, .start-btn { margin-top: 15px; padding: 10px 20px; background-color: #2ecc71; color: white; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
     .input-field { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 16px; }
   </style>
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
 <div class="quiz-container">
-  <!-- Skrin Mula: Masukkan Nama -->
+  <!-- LANDING PAGE: NAMA & PILIH SUBJEK -->
   <div id="login-screen">
-    <h2>Welcome to Year 6 English Quiz</h2>
-    <p>Please enter your name to start:</p>
+    <h2>Selamat Datang ke Portal Kuiz Tahun 6</h2>
+    <p>Masukkan nama penuh anda untuk memulakan:</p>
     <input type="text" id="student-name" class="input-field" placeholder="Nama Penuh Pelajar">
-    <button class="start-btn" onclick="startQuiz()">Start Quiz</button>
+    
+    <p style="margin-top: 20px; font-weight: bold;">Sila Pilih Subjek:</p>
+    <button class="subject-btn btn-bi" onclick="selectSubject('English')">🇬🇧 English Language</button>
+    <button class="subject-btn btn-bm" onclick="selectSubject('Bahasa Melayu')">🇲🇾 Bahasa Melayu</button>
   </div>
 
-  <!-- Skrin Kuiz -->
+  <!-- SKRIN KUIZ -->
   <div id="quiz-screen" style="display:none;">
     <div id="quiz-header">
-      <span class="badge" id="level-badge">Level: Easy</span>
-      <h3 id="question-text">Question goes here</h3>
+      <span class="badge" id="subject-badge">Subjek</span>
+      <span class="badge" id="level-badge" style="background-color: #2ecc71;">Tahap 1</span>
+      <h3 id="question-text">Pernyataan soalan...</h3>
     </div>
 
     <div id="options-container"></div>
     <div id="note-box" class="note-box"></div>
-    <button id="next-btn" class="next-btn" style="display:none;" onclick="nextQuestion()">Next Question</button>
+    <button id="next-btn" class="next-btn" style="display:none;" onclick="nextQuestion()">Soalan Seterusnya</button>
     <div id="result-screen" style="display:none;"></div>
   </div>
 </div>
 
 <script>
-// === KONFIGURASI FIREBASE YANG TELAH DIBAIKI ===
 const firebaseConfig = {
   apiKey: "AIzaSyBQy4jgupQvoOZZ6DAwwWxUwanZQ4GJWq4",
   authDomain: "quiz-tahun-6.firebaseapp.com",
-  databaseURL: "https://quiz-tahun-6-default-rtdb.asia-southeast1.firebasedatabase.app", // 👈 Baris ini yang hilang sebelum ini
+  databaseURL: "https://quiz-tahun-6-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "quiz-tahun-6",
   storageBucket: "quiz-tahun-6.firebasestorage.app",
   messagingSenderId: "529345408718",
@@ -63,63 +69,114 @@ const database = firebase.database();
 
 let studentName = "";
 let studentId = "";
+let selectedSubject = "";
 let currentLevel = "easy";
 let currentQuestionIndex = 0;
 let score = 0;
 let totalScore = 0;
 let answered = false;
 
-const quizData = {
-  easy: [
-    { q: "1. Complete the sentence: 'Harry Potter _______ with his uncle and aunt.'", options: ["live", "lives", "living", "lived"], answer: 1, note: "<b>Grammar Note:</b> 'Harry Potter' is a Singular Subject (He). In Simple Present Tense, we add '-s' to the verb (lives)." },
-    { q: "2. Choose the correct noun: 'Matilda is a Maths _______ because she is very clever with numbers.'", options: ["wizard", "monster", "dinosaur", "alien"], answer: 0, note: "<b>Vocabulary Note:</b> A 'wizard' in this context means someone extraordinarily clever or skilled at something." },
-    { q: "3. Complete the sentence: 'The children _______ to sleep when the Knight sang.'", options: ["go", "went", "going", "gone"], answer: 1, note: "<b>Grammar Note:</b> The story is written in the Simple Past Tense. The past tense of 'go' is 'went'." },
-    { q: "4. Identify the homophone: 'Peace' sounds the same as _______.", options: ["piece", "pace", "place", "praise"], answer: 0, note: "<b>Language Note:</b> Homophones are words that have the same pronunciation but different spellings and meanings ('Peace' / 'Piece')." },
-    { q: "5. Choose the correct plural noun: 'There were many different types of _______ at the fair.'", options: ["book", "books", "bookes", "booking"], answer: 1, note: "<b>Grammar Note:</b> The word 'many' indicates a plural countable noun, so we add '-s' to 'book' -> 'books'." },
-    { q: "6. Complete the sentence: 'Matilda _______ a lot of books every week.'", options: ["read", "reads", "reading", "is read"], answer: 1, note: "<b>Grammar Note:</b> 'Matilda' is a singular subject. For habitual actions in Simple Present Tense, use 'reads'." },
-    { q: "7. Choose the correct spelling: 'The mother was _______ when the Knight arrived late.'", options: ["angry", "angrie", "angree", "angri"], answer: 0, note: "<b>Spelling Note:</b> The correct spelling for the adjective describing feeling mad or annoyed is 'angry'." },
-    { q: "8. Complete the sentence: 'A _______ is a short description of a book.'", options: ["blurb", "blog", "chart", "map"], answer: 0, note: "<b>Vocabulary Note:</b> A 'blurb' is a short description of a book printed on the back cover." },
-    { q: "9. Identify the homophone: 'Night' sounds the same as _______.", options: ["knight", "neat", "net", "knot"], answer: 0, note: "<b>Language Note:</b> 'Night' (waktu malam) and 'knight' (satria) are homophones." },
-    { q: "10. Complete the sentence: 'Jack used _______ beans to grow a gigantic stalk.'", options: ["magic", "magical", "magician", "magically"], answer: 0, note: "<b>Vocabulary Note:</b> 'Magic' acts as a modifier/adjective here for the noun 'beans'." }
-  ],
-  medium: [
-    { q: "1. Complete using Past Continuous Tense: 'Harry _______ when the messenger arrived.'", options: ["is reading", "was reading", "were reading", "read"], answer: 1, note: "<b>Grammar Note:</b> For Past Continuous Tense with a singular subject ('Harry'), use 'was' + Verb-ing." },
-    { q: "2. Choose the correct option: 'Kamini went to the fair _______ buy ten books.'", options: ["so", "because", "to", "but"], answer: 2, note: "<b>Grammar Note:</b> We use 'to' + base verb to state a purpose or intention." },
-    { q: "3. Complete the sentence: 'Miss Trunchbull is _______ ferocious than other teachers.'", options: ["more", "most", "as", "much"], answer: 0, note: "<b>Grammar Note:</b> Comparative adjective for long words (ferocious) uses 'more ... than'." },
-    { q: "4. Identify the correct punctuation: '_______ book would you choose to read?'", options: ["Which", "which", "WHICH", "Which"], answer: 0, note: "<b>Punctuation Note:</b> Questions must begin with a capital letter ('Which')." },
-    { q: "5. Complete with Subject-Verb Agreement: 'Neither Harry nor his friends _______ happy at home.'", options: ["was", "were", "is", "be"], answer: 1, note: "<b>Grammar Note:</b> In 'neither... nor', the verb agrees with the subject closer to it ('his friends' = plural -> 'were')." },
-    { q: "6. Choose the correct conjunction: 'Matilda is young, _______ she is extremely smart.'", options: ["and", "or", "but", "so"], answer: 2, note: "<b>Grammar Note:</b> 'But' is used to show contrast between being young and being very smart." },
-    { q: "7. Complete using Simple Past Tense: 'The mother _______ to meet the Knight of the Night.'", options: ["go", "goes", "went", "gone"], answer: 2, note: "<b>Grammar Note:</b> The irregular past tense form of 'go' is 'went'." },
-    { q: "8. Select the correct homophone: 'Please _______ your answer on the paper.'", options: ["write", "right", "rite", "wright"], answer: 0, note: "<b>Vocabulary Note:</b> 'Write' means to mark letters on paper, whereas 'right' means correct/direction." },
-    { q: "9. Complete the sentence: 'The sun was shining _______ than yesterday.'", options: ["bright", "brighter", "brightest", "more bright"], answer: 1, note: "<b>Grammar Note:</b> Use the comparative form '-er' ('brighter') when comparing two things." },
-    { q: "10. Choose the correct possessive pronoun: 'The decision to buy the book was _______.'", options: ["her", "hers", "she", "herself"], answer: 1, note: "<b>Grammar Note:</b> 'Hers' is a possessive pronoun used without a following noun." }
-  ],
-  hard: [
-    { q: "1. Select the correct First Conditional structure: 'If Harry _______ the invitation, he _______ a new world.'", options: ["accepts / will discover", "accepted / discovered", "accept / discover", "will accept / accepts"], answer: 0, note: "<b>Grammar Note:</b> First Conditional rule: If + Simple Present ('accepts'), Future tense with 'will' + base verb ('will discover')." },
-    { q: "2. Identify the correct Passive Voice: 'The stars _______ by the Knight of the Night.'", options: ["were polished", "was polished", "are polish", "is polishing"], answer: 0, note: "<b>Grammar Note:</b> Passive voice in simple past for plural subject ('The stars') uses 'were' + Past Participle ('polished')." },
-    { q: "3. Choose the sentence with correct punctuation:", options: ["\"I have to wake the moon up,\" said the Knight.", "i have to wake the moon up said the knight.", "\"I have to wake the moon up\" said the Knight", "I have to wake the moon up, said the knight."], answer: 0, note: "<b>Punctuation Note:</b> Direct speech requires quotation marks, proper capitalization, and a comma inside the quotes." },
-    { q: "4. Complete using Past Continuous & Simple Past: 'While the Knight _______ the stars, the mothers _______ below.'", options: ["was polishing / were waiting", "polished / waited", "is polishing / wait", "were polishing / was waiting"], answer: 0, note: "<b>Grammar Note:</b> Two continuous actions happening at the same time in the past both use Past Continuous Tense." },
-    { q: "5. Choose the correct Modal Verb for deduction: 'Matilda solved the complex math problem easily; she _______ a genius.'", options: ["must be", "might not be", "should be", "cannot be"], answer: 0, note: "<b>Grammar Note:</b> Use 'must be' when making a logical deduction based on strong evidence." },
-    { q: "6. Select the correct Relative Pronoun: 'Miss Trunchbull is the headmistress _______ rules Cruncher Hall with an iron fist.'", options: ["who", "which", "where", "whose"], answer: 0, note: "<b>Grammar Note:</b> Use 'who' as a relative pronoun when referring to people ('headmistress')." },
-    { q: "7. Choose the correct Reported Speech: 'The Knight said, \"I am very busy tonight.\"'", options: ["The Knight said that he was very busy that night.", "The Knight said that I am very busy tonight.", "The Knight says that he is very busy tonight.", "The Knight told that he is very busy that night."], answer: 0, note: "<b>Grammar Note:</b> In Reported Speech, present tense ('am') changes to past tense ('was'), and 'tonight' changes to 'that night'." },
-    { q: "8. Complete the sentence: 'Neither the students nor the teacher _______ aware of the change in schedule.'", options: ["was", "were", "are", "be"], answer: 0, note: "<b>Grammar Note:</b> In 'neither... nor', the verb agrees with the subject closest to it ('the teacher' = singular -> 'was')." },
-    { q: "9. Identify the synonym for 'ferocious' in the context of the story:", options: ["fierce and aggressive", "gentle and kind", "quiet and shy", "lazy and calm"], answer: 0, note: "<b>Vocabulary Note:</b> 'Ferocious' means wild, fierce, violent, or aggressive." },
-    { q: "10. Choose the correct Question Tag: 'Harry Potter lives with the Dursleys, _______?'", options: ["doesn't he?", "don't he?", "isn't he?", "didn't he?"], answer: 0, note: "<b>Grammar Note:</b> A positive statement in Simple Present Tense takes a negative question tag using 'doesn't' for singular subjects." }
-  ]
+let levelScores = { easy: 0, medium: 0, hard: 0 };
+
+const quizDatabase = {
+  English: {
+    easy: [
+      { q: "1. Complete the sentence: 'Harry Potter _______ with his uncle and aunt.'", options: ["live", "lives", "living", "lived"], answer: 1, note: "<b>Grammar Note:</b> 'Harry Potter' is a Singular Subject (He). In Simple Present Tense, we add '-s' to the verb (lives)." },
+      { q: "2. Choose the correct noun: 'Matilda is a Maths _______ because she is very clever with numbers.'", options: ["wizard", "monster", "dinosaur", "alien"], answer: 0, note: "<b>Vocabulary Note:</b> A 'wizard' in this context means someone extraordinarily clever or skilled at something." },
+      { q: "3. Complete the sentence: 'The children _______ to sleep when the Knight sang.'", options: ["go", "went", "going", "gone"], answer: 1, note: "<b>Grammar Note:</b> The story is written in the Simple Past Tense. The past tense of 'go' is 'went'." },
+      { q: "4. Identify the homophone: 'Peace' sounds the same as _______.", options: ["piece", "pace", "place", "praise"], answer: 0, note: "<b>Language Note:</b> Homophones are words that have the same pronunciation but different spellings and meanings ('Peace' / 'Piece')." },
+      { q: "5. Choose the correct plural noun: 'There were many different types of _______ at the fair.'", options: ["book", "books", "bookes", "booking"], answer: 1, note: "<b>Grammar Note:</b> The word 'many' indicates a plural countable noun, so we add '-s' to 'book' -> 'books'." },
+      { q: "6. Complete the sentence: 'Matilda _______ a lot of books every week.'", options: ["read", "reads", "reading", "is read"], answer: 1, note: "<b>Grammar Note:</b> 'Matilda' is a singular subject. For habitual actions in Simple Present Tense, use 'reads'." },
+      { q: "7. Choose the correct spelling: 'The mother was _______ when the Knight arrived late.'", options: ["angry", "angrie", "angree", "angri"], answer: 0, note: "<b>Spelling Note:</b> The correct spelling for the adjective describing feeling mad or annoyed is 'angry'." },
+      { q: "8. Complete the sentence: 'A _______ is a short description of a book.'", options: ["blurb", "blog", "chart", "map"], answer: 0, note: "<b>Vocabulary Note:</b> A 'blurb' is a short description of a book printed on the back cover." },
+      { q: "9. Identify the homophone: 'Night' sounds the same as _______.", options: ["knight", "neat", "net", "knot"], answer: 0, note: "<b>Language Note:</b> 'Night' and 'knight' are homophones." },
+      { q: "10. Complete the sentence: 'Jack used _______ beans to grow a gigantic stalk.'", options: ["magic", "magical", "magician", "magically"], answer: 0, note: "<b>Vocabulary Note:</b> 'Magic' acts as a modifier/adjective here for the noun 'beans'." }
+    ],
+    medium: [
+      { q: "1. Complete using Past Continuous Tense: 'Harry _______ when the messenger arrived.'", options: ["is reading", "was reading", "were reading", "read"], answer: 1, note: "<b>Grammar Note:</b> For Past Continuous Tense with a singular subject ('Harry'), use 'was' + Verb-ing." },
+      { q: "2. Choose the correct option: 'Kamini went to the fair _______ buy ten books.'", options: ["so", "because", "to", "but"], answer: 2, note: "<b>Grammar Note:</b> We use 'to' + base verb to state a purpose or intention." },
+      { q: "3. Complete the sentence: 'Miss Trunchbull is _______ ferocious than other teachers.'", options: ["more", "most", "as", "much"], answer: 0, note: "<b>Grammar Note:</b> Comparative adjective for long words (ferocious) uses 'more ... than'." },
+      { q: "4. Identify the correct punctuation: '_______ book would you choose to read?'", options: ["Which", "which", "WHICH", "Which"], answer: 0, note: "<b>Punctuation Note:</b> Questions must begin with a capital letter ('Which')." },
+      { q: "5. Complete with Subject-Verb Agreement: 'Neither Harry nor his friends _______ happy at home.'", options: ["was", "were", "is", "be"], answer: 1, note: "<b>Grammar Note:</b> In 'neither... nor', the verb agrees with the subject closer to it ('his friends' = plural -> 'were')." },
+      { q: "6. Choose the correct conjunction: 'Matilda is young, _______ she is extremely smart.'", options: ["and", "or", "but", "so"], answer: 2, note: "<b>Grammar Note:</b> 'But' is used to show contrast between being young and being very smart." },
+      { q: "7. Complete using Simple Past Tense: 'The mother _______ to meet the Knight of the Night.'", options: ["go", "goes", "went", "gone"], answer: 2, note: "<b>Grammar Note:</b> The irregular past tense form of 'go' is 'went'." },
+      { q: "8. Select the correct homophone: 'Please _______ your answer on the paper.'", options: ["write", "right", "rite", "wright"], answer: 0, note: "<b>Vocabulary Note:</b> 'Write' means to mark letters on paper, whereas 'right' means correct/direction." },
+      { q: "9. Complete the sentence: 'The sun was shining _______ than yesterday.'", options: ["bright", "brighter", "brightest", "more bright"], answer: 1, note: "<b>Grammar Note:</b> Use the comparative form '-er' ('brighter') when comparing two things." },
+      { q: "10. Choose the correct possessive pronoun: 'The decision to buy the book was _______.'", options: ["her", "hers", "she", "herself"], answer: 1, note: "<b>Grammar Note:</b> 'Hers' is a possessive pronoun used without a following noun." }
+    ],
+    hard: [
+      { q: "1. Select the correct First Conditional structure: 'If Harry _______ the invitation, he _______ a new world.'", options: ["accepts / will discover", "accepted / discovered", "accept / discover", "will accept / accepts"], answer: 0, note: "<b>Grammar Note:</b> First Conditional rule: If + Simple Present ('accepts'), Future tense with 'will' + base verb ('will discover')." },
+      { q: "2. Identify the correct Passive Voice: 'The stars _______ by the Knight of the Night.'", options: ["were polished", "was polished", "are polish", "is polishing"], answer: 0, note: "<b>Grammar Note:</b> Passive voice in simple past for plural subject ('The stars') uses 'were' + Past Participle ('polished')." },
+      { q: "3. Choose the sentence with correct punctuation:", options: ["\"I have to wake the moon up,\" said the Knight.", "i have to wake the moon up said the knight.", "\"I have to wake the moon up\" said the Knight", "I have to wake the moon up, said the knight."], answer: 0, note: "<b>Punctuation Note:</b> Direct speech requires quotation marks, proper capitalization, and a comma inside the quotes." },
+      { q: "4. Complete using Past Continuous & Simple Past: 'While the Knight _______ the stars, the mothers _______ below.'", options: ["was polishing / were waiting", "polished / waited", "is polishing / wait", "were polishing / was waiting"], answer: 0, note: "<b>Grammar Note:</b> Two continuous actions happening at the same time in the past both use Past Continuous Tense." },
+      { q: "5. Choose the correct Modal Verb for deduction: 'Matilda solved the complex math problem easily; she _______ a genius.'", options: ["must be", "might not be", "should be", "cannot be"], answer: 0, note: "<b>Grammar Note:</b> Use 'must be' when making a logical deduction based on strong evidence." },
+      { q: "6. Select the correct Relative Pronoun: 'Miss Trunchbull is the headmistress _______ rules Cruncher Hall with an iron fist.'", options: ["who", "which", "where", "whose"], answer: 0, note: "<b>Grammar Note:</b> Use 'who' as a relative pronoun when referring to people ('headmistress')." },
+      { q: "7. Choose the correct Reported Speech: 'The Knight said, \"I am very busy tonight.\"'", options: ["The Knight said that he was very busy that night.", "The Knight said that I am very busy tonight.", "The Knight says that he is very busy tonight.", "The Knight told that he is very busy that night."], answer: 0, note: "<b>Grammar Note:</b> In Reported Speech, present tense ('am') changes to past tense ('was'), and 'tonight' changes to 'that night'." },
+      { q: "8. Complete the sentence: 'Neither the students nor the teacher _______ aware of the change in schedule.'", options: ["was", "were", "are", "be"], answer: 0, note: "<b>Grammar Note:</b> In 'neither... nor', the verb agrees with the subject closest to it ('the teacher' = singular -> 'was')." },
+      { q: "9. Identify the synonym for 'ferocious' in the context of the story:", options: ["fierce and aggressive", "gentle and kind", "quiet and shy", "lazy and calm"], answer: 0, note: "<b>Vocabulary Note:</b> 'Ferocious' means wild, fierce, violent, or aggressive." },
+      { q: "10. Choose the correct Question Tag: 'Harry Potter lives with the Dursleys, _______?'", options: ["doesn't he?", "don't he?", "isn't he?", "didn't he?"], answer: 0, note: "<b>Grammar Note:</b> A positive statement in Simple Present Tense takes a negative question tag using 'doesn't' for singular subjects." }
+    ]
+  },
+  "Bahasa Melayu": {
+    easy: [
+      { q: "1. ______ yang bertugas di hospital itu sedang merawat pesakit.", options: ["Guru", "Doktor", "Hakim", "Polis"], answer: 1, note: "<b>Nota Penting:</b> 'Doktor' ialah kata nama am yang merujuk kepada individu yang merawat pesakit di hospital." },
+      { q: "2. Encik Ahmad memotong rumput di halaman rumahnya dengan menggunakan _______.", options: ["parang", "sabit", "mesin rumput", "pisau"], answer: 2, note: "<b>Nota Penting:</b> 'Mesin rumput' ialah alat yang paling sesuai untuk memotong rumput di halaman." },
+      { q: "3. Bapa membeli se_______ pisang di pasar tani.", options: ["sikat", "biji", "ketul", "potong"], answer: 0, note: "<b>Nota Penting:</b> Penjodoh bilangan bagi pisang yang masih bercantum ialah 'sikat' atau 'sisir'." },
+      { q: "4. Pemandu kereta itu memperlahankan kenderaannya apabila mendekati laluan _______ sekolah.", options: ["pejalan kaki", "kanak-kanak", "belang", "lintasan"], answer: 2, note: "<b>Nota Penting:</b> 'Laluan belang' atau 'lintasan pejalan kaki' digunakan untuk pejalan kaki melintas jalan." },
+      { q: "5. Sang Kancil menggunakan akalnya yang bijak untuk menewaskan _______.", options: ["Sang Buaya", "Sang Kucing", "Sang Ayam", "Sang Lembu"], answer: 0, note: "<b>Nota Penting:</b> Dalam cerita rakyat, Sang Kancil terkenal dengan kisah menewaskan Sang Buaya." },
+      { q: "6. Ibu menumis perencah nasi goreng itu sehingga _______.", options: ["wangi", "harum", "garing", "hangit"], answer: 2, note: "<b>Nota Penting:</b> Menumis perencah lazimnya sehingga 'garing' atau 'pecah minyak'." },
+      { q: "7. Murid-murid sedang beratur di _______ kantin untuk membeli makanan.", options: ["luar", "sisi", "hadapan", "dalam"], answer: 2, note: "<b>Nota Penting:</b> Beratur di 'hadapan' kaunter kantin untuk membeli makanan." },
+      { q: "8. Pokok kelapa di tepi pantai itu sangat _______.", options: ["rendang", "tinggi", "tebal", "lebat"], answer: 1, note: "<b>Nota Penting:</b> Kata sifat/adjektif yang sesuai bagi pokok kelapa ialah 'tinggi'." },
+      { q: "9. Amran merupakan seorang budak yang _______ kerana suka membantu gurunya.", options: ["rajin", "malas", "sombong", "penakut"], answer: 0, note: "<b>Nota Penting:</b> 'Rajin' ialah sifat bagi individu yang suka membantu." },
+      { q: "10. Hobi kegemaran Nurul pada masa lapang ialah _______ buku cerita.", options: ["menulis", "membaca", "melukis", "menyanyi"], answer: 1, note: "<b>Nota Penting:</b> Perkataan 'buku cerita' paling sesuai dipadankan dengan kata kerja 'membaca'." }
+    ],
+    medium: [
+      { q: "1. '_______ hendaklah sentiasa mematuhi peraturan sekolah,' kata Guru Besar kepada murid-murid.", options: ["Kalian", "Kamu", "Mereka", "Kita"], answer: 1, note: "<b>Nota Penting:</b> Kata ganti nama diri ketiga 'Kamu' atau 'Kalian' sesuai digunakan apabila bercakap dengan murid secara umum." },
+      { q: "2. Pilih ayat yang menggunakan kata ganda yang betul:", options: ["Kanak-kanak itu bermain di padang.", "Budak-budak itu makan nasi.", "Guru-guru sedang bermesyuarat.", "Semua jawapan di atas adalah betul."], answer: 3, note: "<b>Nota Penting:</b> Kesemua ayat menggunakan kata ganda separa/penuh yang betul mengikut konteks." },
+      { q: "3. 'Jangan bermain di tepi sungai yang mendalam itu,' _______ ibu kepada adik.", options: ["pesan", "tanya", "jerit", "panggil"], answer: 0, note: "<b>Nota Penting:</b> Larangan secara lembut daripada ibu dipanggil 'pesan'." },
+      { q: "4. Peribahasa 'Seperti katak di bawah tempurung' bermaksud:", options: ["Seseorang yang sangat malas", "Orang yang terkurung dalam rumah", "Orang yang sedikit pengetahuan/pengalaman", "Orang yang suka melompat-lompat"], answer: 2, note: "<b>Nota Penting:</b> Peribahasa ini merujuk kepada orang yang cetek ilmu atau pengetahuan kerana tidak melihat dunia luar." },
+      { q: "5. Bangunan pencakar langit itu merupakan bangunan yang paling _______ di bandar ini.", options: ["tertinggi", "tinggi sekali", "amat tinggi", "semua betul"], answer: 3, note: "<b>Nota Penting:</b> Penggunaan 'paling tinggi', 'tinggi sekali', atau 'tertinggi' adalah betul mengikut tatabahasa." },
+      { q: "6. Para pekerja sedang _______ jalan raya yang rosak akibat banjir.", options: ["memperbaiki", "menurap", "menambak", "membuat"], answer: 1, note: "<b>Nota Penting:</b> Kata kerja khusus untuk jalan raya ialah 'menurap' jalan." },
+      { q: "7. Sikapnya yang _______ menyebabkan dia disukai oleh kawan-kawannya.", options: ["rendah diri", "besar kepala", "hidung tinggi", "berat tulang"], answer: 0, note: "<b>Nota Penting:</b> 'Rendah diri' atau 'tawaduk' ialah sifat terpuji." },
+      { q: "8. Pasukan bola sepak sekolah kita telah _______ kejohanan peringkat daerah.", options: ["menjuarai", "menang", "mencapai", "mendapat"], answer: 0, note: "<b>Nota Penting:</b> Kata kerja transitif 'menjuarai' sesuai diikuti terus oleh kata nama 'kejohanan'." },
+      { q: "9. Pilih kata penghubung ayat yang betul: 'Siti rajin belajar _______ dia cemerlang dalam peperiksaan.'", options: ["tetapi", "malah", "sehingga", "kerana"], answer: 2, note: "<b>Nota Penting:</b> 'Sehingga' menunjukkan hasil atau akibat daripada tindakan rajin belajar." },
+      { q: "10. Kebakaran itu berjaya dipadamkan oleh pihak bomba dalam _______ dua jam.", options: ["masa", "tempoh", "selang", "jangka"], answer: 1, note: "<b>Nota Penting:</b> 'Tempoh' merujuk kepada jangka masa tertentu." }
+    ],
+    hard: [
+      { q: "1. Pilih ayat pasif yang betul bagi ayat aktif: 'Abang telah mengecat pagar rumah itu.'", options: ["Pagar rumah itu telah dicat oleh abang.", "Pagar rumah telah abang cat.", "Abang dicat pagar rumah itu.", "Pagar rumah itu mengecat abang."], answer: 0, note: "<b>Nota Penting:</b> Ayat pasif bagi kata ganti nama diri ketiga (Abang) mestilah menggunakan imbuhan 'di-... oleh'." },
+      { q: "2. Apakah maksud frasa 'Ibu pertiwi'?", options: ["Ibu kandung sendiri", "Tanah air tempat lahir", "Pemimpin wanita", "Ibu negeri"], answer: 1, note: "<b>Nota Penting:</b> 'Ibu pertiwi' ialah kiasan/simbolik kepada tanah air tempat kita dilahirkan." },
+      { q: "3. Pilih ayat yang betul dari segi tatabahasa:", options: ["Di dalam mesyuarat itu pelbagai masalah-masalah dibincangkan.", "Antara faktor-faktor utama adalah seperti berikut.", "Berbagai-bagai kuih-muih dijual di pasar malam itu.", "Pelbagai usaha telah dijalankan untuk meningkatkan mutu pendidikan."], answer: 3, note: "<b>Nota Penting:</b> Perkataan 'Pelbagai' sudah menunjukkan kata jamak, jadi kata nama selepasnya tidak perlu diulang/digandakan." },
+      { q: "4. Peribahasa yang bermaksud 'Melakukan sesuatu pekerjaan yang sia-sia' ialah:", options: ["Mencurah air ke daun keladi", "Bagai aur dengan tebing", "Sediakan payung sebelum hujan", "Harimau mati meninggalkan belang"], answer: 0, note: "<b>Nota Penting:</b> 'Mencurah air ke daun keladi' bermaksud memberi nasihat atau usaha yang tidak mendatangkan kesan (sia-sia)." },
+      { q: "5. Bagaimanakah ejaan yang betul bagi kata pinjaman bahasa Inggeris ini?", options: ["Katalog", "Kataloge", "Catalog", "Kataloga"], answer: 0, note: "<b>Nota Penting:</b> Ejaan Bahasa Melayu bagi 'catalogue' yang betul mengikut DBP ialah 'katalog'." },
+      { q: "6. Pilih jawapan dengan imbuhan 'memper-...-kan' yang betul:", options: ["memperluaskan", "memperkemaskan", "memperdengarkan", "memperbesarkan"], answer: 2, note: "<b>Nota Penting:</b> Imbuhan 'memper-...-kan' tidak boleh digunakan bersama kata adjektif (luas/besar/kemas). 'Memperdengarkan' (kata kerja 'dengar') adalah betul." },
+      { q: "7. 'Walaupun beliau seorang yang kaya-raya, namun beliau tetap _______.'", options: ["merendah diri", "berada", "tinggi diri", "tangan terbuka"], answer: 0, note: "<b>Nota Penting:</b> 'Merendah diri' ialah sikap tidak sombong walaupun berharta." },
+      { q: "8. Pilih Kata Majmuk yang betul ejaannya:", options: ["Aturcara", "Setiausaha", "AJK", "Kakitangan"], answer: 1, note: "<b>Nota Penting:</b> 'Setiausaha' dan 'Kakitangan' dijautkan (mantap). Namun 'Atur cara' dijautkan secara terpisah." },
+      { q: "9. Penjodoh bilangan yang sesuai untuk 'pistol' atau 'meriam' ialah:", options: ["pucuk", "laras", "batang", "biji"], answer: 1, note: "<b>Nota Penting:</b> Penjodoh bilangan bagi senjata api besar/laras panjang seperti meriam/senapang ialah 'laras'." },
+      { q: "10. Apakah frasa nama bagi subjek dalam ayat: 'Rumah banglo dua tingkat di atas bukit itu milik Datuk Lee.'", options: ["Rumah banglo", "Rumah banglo dua tingkat di atas bukit itu", "Di atas bukit itu", "Milik Datuk Lee"], answer: 1, note: "<b>Nota Penting:</b> Subjek penuh bagi ayat ini ialah keseluruhan frasa nama 'Rumah banglo dua tingkat di atas bukit itu'." }
+    ]
+  }
 };
 
-function startQuiz() {
+function selectSubject(subject) {
   const nameInput = document.getElementById("student-name").value.trim();
   if (!nameInput) {
-    alert("Sila masukkan nama anda!");
+    alert("Sila masukkan nama penuh anda terlebih dahulu!");
     return;
   }
+  
   studentName = nameInput;
+  selectedSubject = subject;
   studentId = "student_" + Date.now();
   
+  levelScores = { easy: 0, medium: 0, hard: 0 };
+  totalScore = 0;
+  currentLevel = "easy";
+  currentQuestionIndex = 0;
+
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("quiz-screen").style.display = "block";
-  
+  document.getElementById("subject-badge").innerText = selectedSubject;
+
   updateScoreInFirebase();
   loadQuestion();
 }
@@ -127,6 +184,7 @@ function startQuiz() {
 function updateScoreInFirebase() {
   database.ref('leaderboard/' + studentId).set({
     name: studentName,
+    subject: selectedSubject,
     score: totalScore,
     level: currentLevel,
     lastUpdate: new Date().toLocaleTimeString()
@@ -135,9 +193,9 @@ function updateScoreInFirebase() {
 
 function loadQuestion() {
   answered = false;
-  const qData = quizData[currentLevel][currentQuestionIndex];
+  const qData = quizDatabase[selectedSubject][currentLevel][currentQuestionIndex];
   
-  document.getElementById("level-badge").innerText = "Level: " + currentLevel.toUpperCase() + " (" + (currentQuestionIndex + 1) + "/10)";
+  document.getElementById("level-badge").innerText = "Tahap: " + currentLevel.toUpperCase() + " (" + (currentQuestionIndex + 1) + "/10)";
   document.getElementById("question-text").innerText = qData.q;
   
   const optionsContainer = document.getElementById("options-container");
@@ -149,7 +207,7 @@ function loadQuestion() {
   qData.options.forEach((opt, index) => {
     const btn = document.createElement("button");
     btn.className = "option-btn";
-    btn.innerText = opt;
+    btn.innerText = String.fromCharCode(65 + index) + ". " + opt;
     btn.onclick = () => checkAnswer(index);
     optionsContainer.appendChild(btn);
   });
@@ -159,7 +217,7 @@ function checkAnswer(selectedIndex) {
   if (answered) return;
   answered = true;
   
-  const qData = quizData[currentLevel][currentQuestionIndex];
+  const qData = quizDatabase[selectedSubject][currentLevel][currentQuestionIndex];
   const noteBox = document.getElementById("note-box");
   const options = document.querySelectorAll(".option-btn");
   
@@ -167,19 +225,21 @@ function checkAnswer(selectedIndex) {
 
   if (selectedIndex === qData.answer) {
     score++;
-    totalScore += 10;
     options[selectedIndex].style.backgroundColor = "#2ecc71";
     options[selectedIndex].style.color = "white";
     noteBox.className = "note-box correct-note";
-    noteBox.innerHTML = "<strong>Correct! 🎉</strong><br>" + qData.note;
+    noteBox.innerHTML = "<strong>Betul! 🎉</strong><br>" + qData.note;
   } else {
     options[selectedIndex].style.backgroundColor = "#e74c3c";
     options[selectedIndex].style.color = "white";
     options[qData.answer].style.backgroundColor = "#2ecc71";
     options[qData.answer].style.color = "white";
     noteBox.className = "note-box wrong-note";
-    noteBox.innerHTML = "<strong>Incorrect! ❌</strong><br>" + qData.note;
+    noteBox.innerHTML = "<strong>Salah! ❌</strong><br>" + qData.note;
   }
+  
+  levelScores[currentLevel] = score * 10;
+  totalScore = levelScores.easy + levelScores.medium + levelScores.hard;
   
   updateScoreInFirebase();
   noteBox.style.display = "block";
@@ -204,22 +264,22 @@ function showLevelResult() {
   const resultScreen = document.getElementById("result-screen");
   resultScreen.style.display = "block";
   
-  let resultHTML = `<h2>Level Complete!</h2>`;
-  resultHTML += `<p>Level Score: <strong>${score} / 10</strong></p>`;
-  resultHTML += `<p>Total Points: <strong>${totalScore}</strong></p>`;
+  let resultHTML = `<h2>Tahap Selesai!</h2>`;
+  resultHTML += `<p>Markah Tahap Ini: <strong>${score} / 10</strong></p>`;
+  resultHTML += `<p>Jumlah Markah Keseluruhan: <strong>${totalScore}</strong></p>`;
   
   if (score >= 8) {
-    resultHTML += `<p style="color: green; font-weight: bold;">Great job! You passed this stage.</p>`;
+    resultHTML += `<p style="color: green; font-weight: bold;">Syabas! Anda lulus tahap ini.</p>`;
     if (currentLevel === "easy") {
-      resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="startNextLevel('medium')">Advance to Medium Level</button>`;
+      resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="startNextLevel('medium')">Maju ke Tahap Sederhana (Medium)</button>`;
     } else if (currentLevel === "medium") {
-      resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="startNextLevel('hard')">Advance to Hard Level</button>`;
+      resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="startNextLevel('hard')">Maju ke Tahap Sukar (Hard)</button>`;
     } else {
-      resultHTML += `<h3>Congratulations! You have successfully mastered all levels! 🎉</h3>`;
+      resultHTML += `<h3>Tahniah! Anda telah menguasai kesemua tahap bagi subjek ini! 🎉</h3>`;
     }
   } else {
-    resultHTML += `<p style="color: red; font-weight: bold;">You need at least 8/10 to unlock the next level. Please try again!</p>`;
-    resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="repeatLevel()">Retry Level</button>`;
+    resultHTML += `<p style="color: red; font-weight: bold;">Anda memerlukan sekurang-kurangnya 8/10 untuk ke tahap seterusnya. Sila cuba lagi!</p>`;
+    resultHTML += `<button class="next-btn" style="display:inline-block;" onclick="repeatLevel()">Ulang Tahap Ini</button>`;
   }
   
   resultScreen.innerHTML = resultHTML;
@@ -234,82 +294,6 @@ function startNextLevel(nextLvl) {
 }
 
 function repeatLevel() {
-  currentQuestionIndex = 0;
-  score = 0;
-  resetUI();
-  loadQuestion();
-}
-
-function resetUI() {
-  document.getElementById("quiz-header").style.display = "block";
-  document.getElementById("options-container").style.display = "block";
-  document.getElementById("result-screen").style.display = "none";
-}
-  // SIMPAN MARKAH TERTINGGI BAGI SETIAP TAHAP
-let levelScores = {
-  easy: 0,
-  medium: 0,
-  hard: 0
-};
-
-function startQuiz() {
-  const nameInput = document.getElementById("student-name").value.trim();
-  if (!nameInput) {
-    alert("Sila masukkan nama anda!");
-    return;
-  }
-  studentName = nameInput;
-  studentId = "student_" + Date.now();
-  
-  // Reset markah apabila mula kuiz baharu
-  levelScores = { easy: 0, medium: 0, hard: 0 };
-  totalScore = 0;
-  
-  document.getElementById("login-screen").style.display = "none";
-  document.getElementById("quiz-screen").style.display = "block";
-  
-  updateScoreInFirebase();
-  loadQuestion();
-}
-
-function checkAnswer(selectedIndex) {
-  if (answered) return;
-  answered = true;
-  
-  const qData = quizData[currentLevel][currentQuestionIndex];
-  const noteBox = document.getElementById("note-box");
-  const options = document.querySelectorAll(".option-btn");
-  
-  options.forEach(btn => btn.disabled = true);
-
-  if (selectedIndex === qData.answer) {
-    score++; // Markah percubaan semasa (0-10)
-    options[selectedIndex].style.backgroundColor = "#2ecc71";
-    options[selectedIndex].style.color = "white";
-    noteBox.className = "note-box correct-note";
-    noteBox.innerHTML = "<strong>Correct! 🎉</strong><br>" + qData.note;
-  } else {
-    options[selectedIndex].style.backgroundColor = "#e74c3c";
-    options[selectedIndex].style.color = "white";
-    options[qData.answer].style.backgroundColor = "#2ecc71";
-    options[qData.answer].style.color = "white";
-    noteBox.className = "note-box wrong-note";
-    noteBox.innerHTML = "<strong>Incorrect! ❌</strong><br>" + qData.note;
-  }
-  
-  // Kemas kini markah tahap semasa (1 soalan betul = 10 mata)
-  levelScores[currentLevel] = score * 10;
-  
-  // Hitung jumlah markah terkumpul dari semua tahap yang telah dilalui
-  totalScore = levelScores.easy + levelScores.medium + levelScores.hard;
-  
-  updateScoreInFirebase();
-  noteBox.style.display = "block";
-  document.getElementById("next-btn").style.display = "inline-block";
-}
-
-function repeatLevel() {
-  // Apabila retry level, reset markah tahap ini semula ke 0
   score = 0;
   levelScores[currentLevel] = 0;
   totalScore = levelScores.easy + levelScores.medium + levelScores.hard;
@@ -320,12 +304,10 @@ function repeatLevel() {
   loadQuestion();
 }
 
-function startNextLevel(nextLvl) {
-  currentLevel = nextLvl;
-  currentQuestionIndex = 0;
-  score = 0;
-  resetUI();
-  loadQuestion();
+function resetUI() {
+  document.getElementById("quiz-header").style.display = "block";
+  document.getElementById("options-container").style.display = "block";
+  document.getElementById("result-screen").style.display = "none";
 }
 </script>
 

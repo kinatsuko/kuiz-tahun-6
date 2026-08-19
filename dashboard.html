@@ -1,18 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ms">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Teacher Live Dashboard - Leaderboard</title>
+  <title>Teacher Live Dashboard - Leaderboard Multi-Subject</title>
   <style>
     body { font-family: Arial, sans-serif; background-color: #f4f7f6; padding: 20px; }
-    .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    .container { max-width: 850px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
     h2 { color: #2c3e50; text-align: center; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
     th { background-color: #3498db; color: white; }
     tr:nth-child(even) { background-color: #f2f2f2; }
     .top-1 { font-weight: bold; background-color: #ffeaa7 !important; }
+    .badge-sub { padding: 4px 8px; border-radius: 4px; color: white; font-weight: bold; font-size: 12px; }
+    .sub-bi { background-color: #3498db; }
+    .sub-bm { background-color: #e67e22; }
     .clear-btn { background-color: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; float: right; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -21,7 +24,7 @@
 <body>
 
 <div class="container">
-  <h2>🏆 Live Leaderboard Pelajar</h2>
+  <h2>🏆 Live Leaderboard Pelajar (Semua Subjek)</h2>
   <button class="clear-btn" onclick="resetLeaderboard()">Reset Data</button>
   <div style="clear:both;"></div>
 
@@ -30,23 +33,23 @@
       <tr>
         <th>Kedudukan</th>
         <th>Nama Pelajar</th>
+        <th>Subjek</th>
         <th>Jumlah Markah</th>
         <th>Tahap Semasa</th>
         <th>Masa Kemas Kini</th>
       </tr>
     </thead>
     <tbody id="leaderboard-body">
-      <tr><td colspan="5">Memuatkan data...</td></tr>
+      <tr><td colspan="6">Memuatkan data...</td></tr>
     </tbody>
   </table>
 </div>
 
 <script>
-// === KONFIGURASI FIREBASE YANG TELAH DIBAIKI ===
 const firebaseConfig = {
   apiKey: "AIzaSyBQy4jgupQvoOZZ6DAwwWxUwanZQ4GJWq4",
   authDomain: "quiz-tahun-6.firebaseapp.com",
-  databaseURL: "https://quiz-tahun-6-default-rtdb.asia-southeast1.firebasedatabase.app", // 👈 Baris ini yang hilang sebelum ini
+  databaseURL: "https://quiz-tahun-6-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "quiz-tahun-6",
   storageBucket: "quiz-tahun-6.firebasestorage.app",
   messagingSenderId: "529345408718",
@@ -56,27 +59,28 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// Dengar perubahan data secara MASA NYATA
 database.ref('leaderboard').on('value', (snapshot) => {
   const data = snapshot.val();
   const tbody = document.getElementById("leaderboard-body");
   tbody.innerHTML = "";
 
   if (!data) {
-    tbody.innerHTML = "<tr><td colspan='5'>Tiada data pelajar lagi.</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='6'>Tiada data pelajar lagi.</td></tr>";
     return;
   }
 
-  // Susun pelajar mengikut markah tertinggi
   const students = Object.values(data).sort((a, b) => b.score - a.score);
 
   students.forEach((student, index) => {
     const row = document.createElement("tr");
     if (index === 0) row.className = "top-1";
     
+    const subClass = student.subject === "English" ? "sub-bi" : "sub-bm";
+    
     row.innerHTML = `
       <td>${index + 1}</td>
       <td><strong>${student.name}</strong></td>
+      <td><span class="badge-sub ${subClass}">${student.subject || 'English'}</span></td>
       <td>${student.score}</td>
       <td><span style="text-transform:uppercase;">${student.level}</span></td>
       <td>${student.lastUpdate || '-'}</td>
